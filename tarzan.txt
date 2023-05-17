@@ -1,0 +1,849 @@
+local esp = {cache = {connections = {}}};
+local maths = loadstring(game:HttpGet('https://raw.githubusercontent.com/JayGitCuh/Apollo/main/libraries/math.lua'))()
+local drawing = loadstring(game:HttpGet('https://raw.githubusercontent.com/JayGitCuh/useful-stuff/main/vozoidextension.lua'))()
+local drawing_new = function(class, properties)
+    if class == "3dCircle" then
+        properties = properties or {}
+        local t = drawing:MakeCircle()
+        for property, value in next, properties do
+            t[property] = value
+        end
+        return t
+    else
+        properties = properties or {}
+        local object = Drawing.new(class)
+        for property, value in next, properties do
+            object[property] = value
+        end
+        return object
+        --return drawing:Create(class, properties)
+    end
+end
+local ContentProvider = game:GetService("ContentProvider")
+local dwRunservice = game:GetService("RunService");
+local dwPlayers = game:GetService('Players');
+local dwLocalPlayer = dwPlayers.LocalPlayer;
+local dwMouse = dwLocalPlayer:GetMouse();
+local dwWorkspace = game:GetService("Workspace");
+local dwCamera = dwWorkspace.CurrentCamera;
+local dwUserInputService = game:GetService("UserInputService");
+--Optimization Vars
+local Vector3_new = Vector3.new
+local Vector2_new = Vector2.new
+local math_tan = math.tan
+local math_rad = math.rad
+local Ray_new = Ray.new
+local task_spawn = task.spawn
+local World_To_Screen = maths.WorldToScreen
+local Color3_fromRGB = Color3.fromRGB
+local UDim2_new = UDim2.new
+local TweenInfo_new = TweenInfo.new
+local Vec2_Udim = maths.Vec2Udim
+--Cool functions
+local getcharacter = function(player)
+    if game.PlaceId == 123 then
+
+    else
+        if player.ClassName == "Model" then
+            return player
+        else
+            return player.Character
+        end
+    end
+end
+local isfriendly = function(Player:Player, Self:Player)
+    if game.PlaceId == 13253735473 then
+        return false
+    else
+        if Player ~= nil and Self ~= nil and Player.TeamColor == Self.TeamColor then
+            return true
+        end
+    end
+end
+local getrank = function(player)
+    if game.PlaceId == 4310463616 then
+        return player.Character:FindFirstChild('Properties').Class.Value
+    else
+        return 'This place is not supported'
+    end
+end
+local getweapon = function(player)
+    if game.PlaceId == 2555870920 then
+        return player.Weapons.Gun.Value
+    else
+        return 'This place is not supported'
+    end
+end
+local function lerp(a,b,t) -- a = current_value, b = target_value, t = percent max_value = 1
+    return a * (1-t) + b * t
+end
+local function pulsing_lerp(a, b, t)
+    local sine_value = math.sin(os.clock() * 5) -- change the 10 to set the speed of the pulsing
+    local pulse = (sine_value + 0.1) / 2 -- transform the sine value to range between 0 and 1
+    local pulse_factor = lerp(1, -1, pulse) -- map the pulse to a factor ranging from 1 to -1 0.1
+    -- apply the pulsing factor to the lerp calculation
+    local value = lerp(a, b, t) + pulse_factor
+    return value
+end
+local function pulsing_3_lerp(a, b, t, s)
+    local sine_value = math.sin(os.clock() * s) -- change the 10 to set the speed of the pulsing
+    local pulse = (sine_value + 0.1) / 2 -- transform the sine value to range between 0 and 1
+    local pulse_factor = lerp(1, -1, pulse) -- map the pulse to a factor ranging from 1 to -1 0.1
+    -- apply the pulsing factor to the lerp calculation
+    local value = lerp(a, b, t) + pulse_factor
+    return value
+end
+local function pulsing_2_lerp(a, b, t)
+    local sine_value = math.sin(os.clock() * 5) -- change the 10 to set the speed of the pulsing
+    local pulse = (sine_value + 0.1) / 2 -- transform the sine value to range between 0 and 1
+    local pulse_factor = lerp(0.1, -1, pulse) -- map the pulse to a factor ranging from 1 to -1 0.1
+    -- apply the pulsing factor to the lerp calculation
+    local value = lerp(a, b, t) + pulse_factor
+    return value
+end
+esp.Render = function(instance: Instance, type: string, config: table)
+    config = config
+    if string.lower(type) == "player" then
+        local player
+        local p = {
+            health = 1,
+            maxhealth = 100,
+        };
+        local e = {
+            ['Shadow'] = {Filled = drawing_new("Square", {Visible = false}), Box = drawing_new("Square", {Visible = false}), Healthbar = drawing_new("Square", {Visible = false})},
+            ['Core'] = {Box = drawing_new("Square", {Visible = false}), Tracer = Drawing.new("Line"), Healthbar = drawing_new("Square", {Visible = false})},
+            ['Text'] = {Health = drawing_new("Text", {Color = Color3_fromRGB(255, 255, 255), Font = 2, Size = 13}), Name_Distance = drawing_new("Text", {Color = Color3_fromRGB(255, 255, 255), Font = 2, Size = 13}), Weapon = drawing_new("Text", {Color = Color3_fromRGB(255, 255, 255), Font = 2, Size = 13}), Rank = drawing_new("Text", {Color = Color3_fromRGB(255, 255, 255), Font = 2, Size = 13})},
+        };
+        for i,v in pairs(e.Core) do
+            if i ~= "Tracer" then
+                v.Visible = false
+                v.Filled = false
+                v.Thickness = 1
+            else
+                v.Visible = false
+                v.Thickness = 1
+            end
+        end
+        e.Core.Healthbar.Filled = true
+        e.Core.Healthbar.Thickness = 0
+        for i,v in pairs(e.Shadow) do
+            v.Visible = false
+            v.Filled = false
+            v.Thickness = 1.5
+            if i == 'Filled' then
+                v.Color = Color3_fromRGB(0, 0, 0)
+            else
+                v.Color = Color3_fromRGB(32, 32, 32)
+            end
+        end
+        e.Shadow.Healthbar.Filled = true
+        e.Shadow.Filled.Filled = true
+        for i,v in pairs(e.Text) do
+            v.Visible = false
+            v.Outline = true
+            v.Center = true
+        end
+        e.Text.Rank.Center = false
+        e.Text.Weapon.Center = false
+        local setvis = function(value)
+            for i,v in pairs(e.Shadow) do
+                v.Visible = value
+            end
+            for i,v in pairs(e.Core) do
+                v.Visible = value
+            end
+            for i,v in pairs(e.Text) do
+                v.Visible = value
+            end
+        end
+        local setcolor = function(value)
+            if value == "team" then
+                for i,v in pairs(e.Core) do
+                    v.Color = config.Settings.TColor
+                end
+            end
+            if value == "enemy" then
+                for i,v in pairs(e.Core) do
+                    v.Color = config.Settings.EColor
+                end
+            end
+        end
+        local loops = table.create(6)
+        local vars = {
+            ['position'] = Vector3_new(0,0,0),
+            ['size'] = Vector2_new(0,0),
+            ['tonscreen'] = false,
+            ['bonscreen'] = false,
+        };
+        local delete = function()
+            for i,v in pairs(loops) do
+                v:Disconnect()
+            end
+            task.wait(0.1)
+            for i,v in pairs(e.Text) do
+                v:Remove()
+            end
+            for i,v in pairs(e.Core) do
+                if i == 'Tracer' then
+                    v:Remove()
+                else
+                    v:Remove()
+                end
+            end
+            for i,v in pairs(e.Shadow) do
+                v:Remove()
+            end
+        end
+        --making a new thread for perf reasons and optimizing lmfao
+        task_spawn(function()
+            loops['math'] = config.Renderstep(game:GetService("RunService").RenderStepped, function()
+                if instance ~= nil then
+                    player = getcharacter(instance)
+                    if game.PlaceId == 2555870920 then
+                        if player ~= nil and player:FindFirstChild('Health') ~= nil and player:FindFirstChild('Health'):FindFirstChild('Max') ~= nil then
+                            p.health = player:FindFirstChild('Health').Value
+                            p.maxhealth = player:FindFirstChild('Health'):FindFirstChild('Max').Value
+                        end
+                    elseif game.PlaceId == 13253735473 then
+                        if player ~= nil then
+                            p.health = 100
+                            p.maxhealth = 100
+                        end
+                    else
+                        if player ~= nil and player:FindFirstChild('Humanoid') ~= nil then
+                            p.health = player:FindFirstChild('Humanoid').Health
+                            p.maxhealth = player:FindFirstChild('Humanoid').MaxHealth
+                        end
+                    end
+                end
+                if config.Toggles.Enabled and instance ~= nil and player ~= nil then
+                    vars['position'], vars['size'], vars['tonscreen'], vars['bonscreen'] = maths.GetBoundingBox(player)
+                end
+            end)
+        end)
+        task_spawn(function()
+            loops['visible'] = config.Renderstep(game:GetService("RunService").RenderStepped, function()
+                if config.Toggles.Enabled and instance ~= nil and player ~= nil and player.PrimaryPart ~= nil and p.health > 0 and (vars['tonscreen'] or vars['bonscreen']) and maths.GetDistance(maths.Vec3_Vec2(player.PrimaryPart.Position)) < config.Settings.Distance then
+                    if isfriendly(instance, dwLocalPlayer) then
+                        e.Core.Box.Visible = config.Toggles.Box and config.Conditions.TeamCheck
+                        e.Shadow.Box.Visible = config.Toggles.Box and config.Conditions.TeamCheck
+                        e.Text.Name_Distance.Visible = config.Toggles.Name and config.Conditions.TeamCheck
+                        e.Core.Healthbar.Visible = config.Toggles.Healthbar and config.Conditions.TeamCheck
+                        e.Text.Health.Visible = config.Toggles.Healthbar and config.Conditions.TeamCheck and p.health <= 95
+                        e.Shadow.Filled.Visible = config.Toggles.Box and config.Settings.Filled and config.Conditions.TeamCheck
+                        e.Shadow.Healthbar.Visible = config.Toggles.Healthbar and config.Conditions.TeamCheck
+                        e.Text.Rank.Visible = config.Toggles.Rank and config.Conditions.TeamCheck
+                        e.Text.Weapon.Visible = config.Toggles.Weapon and config.Conditions.TeamCheck
+                        e.Core.Tracer.Visible = config.Toggles.Tracer and config.Conditions.TeamCheck
+                    else
+                        e.Core.Box.Visible = config.Toggles.Box
+                        e.Shadow.Box.Visible = config.Toggles.Box
+                        e.Text.Name_Distance.Visible = config.Toggles.Name
+                        e.Text.Health.Visible = config.Toggles.Healthbar and p.health <= 95
+                        e.Core.Healthbar.Visible = config.Toggles.Healthbar
+                        e.Shadow.Filled.Visible = config.Toggles.Box and config.Settings.Filled
+                        e.Shadow.Healthbar.Visible = config.Toggles.Healthbar
+                        e.Text.Rank.Visible = config.Toggles.Rank
+                        e.Text.Weapon.Visible = config.Toggles.Weapon
+                        e.Core.Tracer.Visible = config.Toggles.Tracer
+                    end
+                else
+                    setvis(false)
+                end
+            end)
+        end)
+        local name = instance.Name
+        task_spawn(function()
+            loops['properties'] = config.Renderstep(game:GetService("RunService").RenderStepped, function()
+                if config.Toggles.Enabled and instance ~= nil and player ~= nil and player.PrimaryPart ~= nil and p.health > 0 and (vars['tonscreen'] or vars['bonscreen']) and player.PrimaryPart ~= nil then
+                    --Colors
+                    e.Text.Health.Color = Color3_fromRGB((255 - p.health) - 50, p.health * 2.5, 0)
+                    e.Core.Healthbar.Color = Color3_fromRGB((255 - p.health) - 50, p.health * 2.5, 0)
+                    if isfriendly(instance, dwLocalPlayer) then
+                        setcolor("team")
+                    else
+                        setcolor("enemy")
+                    end
+                    --Other
+                    e.Text.Weapon.Text = getweapon(instance)
+                    e.Text.Rank.Text = getrank(instance)
+                    e.Text.Health.Text = tostring(p.health)
+                    if config.Settings.NoName then
+                        name = "Apollo"
+                    elseif config.Settings.UseDisplayname then
+                        name = instance.DisplayName
+                    else
+                        name = instance.Name
+                    end
+                    if config.Toggles.Distance and config.Toggles.Name then
+                        e.Text.Name_Distance.Text = name.." [ "..tostring(math.ceil(maths.GetDistance(Vector2_new(player.PrimaryPart.Position.X, player.PrimaryPart.Position.Y)))).." ]"
+                    else
+                        if config.Toggles.Name then
+                            e.Text.Name_Distance.Text = name
+                        end
+                        if config.Toggles.Distance then
+                            e.Text.Name_Distance.Text = "[ "..tostring(math.ceil(maths.GetDistance(Vector2_new(player.PrimaryPart.Position.X, player.PrimaryPart.Position.Y)))).." ]"
+                        end
+                    end
+                end
+            end)
+        end)
+        --Position
+        task_spawn(function()
+            loops['position'] = config.Renderstep(game:GetService("RunService").RenderStepped, function()
+                if config.Toggles.Enabled and instance ~= nil and player ~= nil and player.PrimaryPart ~= nil and p.health > 0 and (vars['tonscreen'] or vars['bonscreen']) then
+                    e.Core.Box.Position = vars['position']
+                    e.Shadow.Filled.Position = vars['position']
+                    e.Shadow.Filled.Size = vars['size']
+                    e.Text.Name_Distance.Position = Vector2_new(vars['position'].X + vars['size'].X/2,vars['position'].Y - 4 - e.Text.Name_Distance.TextBounds.Y)
+                    e.Core.Box.Size = vars['size']
+                    e.Shadow.Box.Size = vars['size']
+                    e.Shadow.Box.Position = Vector2_new(vars['position'].X + 1,vars['position'].Y + 1)
+                    e.Core.Healthbar.Position = Vector2_new(vars['position'].X - 4.5, (vars['position'].Y) + (vars['size'].Y - ((vars['size'].Y) * (1-((p.maxhealth - p.health) / p.maxhealth)))))
+                    e.Core.Healthbar.Size = Vector2_new(2, ((vars['size'].Y + 0.5) * (1-((p.maxhealth - p.health) / p.maxhealth))))
+                    e.Shadow.Healthbar.Size = Vector2_new(3, vars['size'].Y + 1)
+                    e.Shadow.Healthbar.Position = Vector2_new(vars['position'].X - 4.5,vars['position'].Y)
+                    e.Text.Health.Position = Vector2_new(vars['position'].X - 8, e.Core.Healthbar.Position.Y -5)
+                    e.Text.Rank.Position = Vector2_new(vars['position'].X + vars['size'].X + 4, vars['position'].Y)
+                    e.Text.Weapon.Position = Vector2_new(vars['position'].X + vars['size'].X + 4, vars['position'].Y)
+                    e.Core.Tracer.From = Vector2_new(dwCamera.ViewportSize.X/2, dwCamera.ViewportSize.Y)
+                    e.Core.Tracer.To = Vector2_new(vars['position'].X + vars['size'].X/2, vars['position'].Y + vars['size'].Y)
+                    if e.Text.Weapon.Visible then
+                        e.Text.Rank.Position = Vector2_new(vars['position'].X + vars['size'].X + 4, vars['position'].Y + e.Text.Weapon.TextBounds.Y)
+                    else
+                        e.Text.Rank.Position = Vector2_new(vars['position'].X + vars['size'].X + 4, vars['position'].Y)
+                    end
+                end
+            end)
+        end)
+        local pulse = {
+            fill = 0,
+            text = 0,
+            core = 0,
+        };
+        --funny lerp animations
+        task_spawn(function()
+            loops['animations'] = config.Renderstep(game:GetService("RunService").RenderStepped, function()
+                if config.Toggles.Enabled and instance ~= nil and player ~= nil and player.PrimaryPart ~= nil and p.health > 0 and (vars['tonscreen'] or vars['bonscreen']) then
+                    pulse.fill = pulsing_2_lerp(0, config.Settings.Opacity, 0.001)
+                    pulse.text = pulsing_lerp(0.5, 1, 0.001)
+                    pulse.core = pulsing_lerp(0.3, 1, 0.001)
+                    if config.Settings.Pulse.Tracer then
+                        e.Core.Tracer.Transparency = pulse.core
+                    else
+                        e.Core.Tracer.Transparency = 1
+                    end
+                    if config.Settings.Pulse.Healthbar then
+                        e.Core.Healthbar.Transparency = pulse.core
+                        e.Shadow.Healthbar.Transparency = pulse.core
+                        e.Text.Health.Transparency = pulse.text
+                    else
+                        e.Core.Healthbar.Transparency = 1
+                        e.Shadow.Healthbar.Transparency = 1
+                        e.Text.Health.Transparency = 1
+                    end
+                    if config.Settings.Pulse.Box then
+                        e.Core.Box.Transparency = pulse.core
+                        e.Shadow.Box.Transparency = pulse.core
+                    else
+                        e.Core.Box.Transparency = 1
+                        e.Shadow.Box.Transparency = 1
+                    end
+                    if config.Settings.Pulse.Filled then
+                        e.Shadow.Filled.Transparency = pulse.fill
+                    else
+                        e.Shadow.Filled.Transparency = config.Settings.Opacity
+                    end
+                    if config.Settings.Pulse.Name_Distance then
+                        e.Text.Name_Distance.Transparency = pulse.text
+                    else
+                        e.Text.Name_Distance.Transparency = 1
+                    end
+                    if config.Settings.Pulse.Weapon then
+                        e.Text.Weapon.Transparency = pulse.text
+                    else
+                        e.Text.Weapon.Transparency = 1
+                    end
+                    if config.Settings.Pulse.Rank then
+                        e.Text.Rank.Transparency = pulse.text
+                    else
+                        e.Text.Rank.Transparency = 1
+                    end
+                end
+            end)
+        end)
+        task_spawn(function()
+            loops['deathcheck'] = config.Renderstep(game:GetService("RunService").RenderStepped, function()
+                if (instance == nil and player == nil) or p.health <= 0 then
+                    setvis(false)
+                    if config.Debug then
+                        print(tostring(instance), 'deleted')
+                    end
+                    delete()
+                end
+            end)
+        end)
+    elseif string.lower(type) == "throwable" then
+        local e = {
+            ['Core'] = {Blast = drawing_new("3dCircle")},
+            ['Text'] = {Name = drawing_new("Text"), Timeleft = drawing_new("Text")};
+        };
+        for i,v in pairs(e.Core) do
+            v.Visible = false
+            v.Thickness = 1
+            v.Radius = 10;
+        end
+        for i,v in pairs(e.Text) do
+            v.Visible = false
+            v.Outline = true
+            v.Center = true
+        end
+        local setvis = function(value)
+            for i,v in pairs(e.Core) do
+                v.Visible = value
+            end
+            for i,v in pairs(e.Text) do
+                v.Visible = value
+            end
+        end
+        local loops = table.create(4)
+        local delete = function()
+            for i,v in pairs(loops) do
+                v:Disconnect()
+            end
+            task.wait(0.1)
+            for i,v in pairs(e.Text) do
+                v:Remove()
+            end
+            for i,v in pairs(e.Core) do
+                v:Remove()
+            end
+        end
+        local vars = {
+            ['position'] = Vector3_new(0,0),
+            ['onscreen'] = false,
+        };
+        local startTime = os.clock()
+        --[[
+        local a, b = 0, 1
+        for i = 1, 5000000 do
+            a, b = b, a
+        end
+        ]]
+        local deltaTime = 0
+        local blowuptime = 0
+        loops['math'] = config.Renderstep(game:GetService("RunService").RenderStepped, function()
+            deltaTime = os.clock() - startTime
+            blowuptime = config.Settings.Duration - deltaTime
+            if instance:IsDescendantOf(dwWorkspace) and instance.PrimaryPart ~= nil then
+                vars['position'], vars['onscreen'] = maths.WorldToScreen(instance.PrimaryPart.Position)
+            end
+        end)
+        loops['position'] = config.Renderstep(game:GetService("RunService").RenderStepped, function()
+            if instance:IsDescendantOf(dwWorkspace) and instance.PrimaryPart ~= nil then
+                e.Core.Blast.Position = instance.PrimaryPart.Position
+                e.Text.Name.Position = Vector2_new(vars['position'].X, vars['position'].Y - 7)
+                e.Text.Timeleft.Position = Vector2_new(vars['position'].X, vars['position'].Y + 7)
+            end
+        end)
+        local pulse = {
+            text = 0,
+            color = 0,
+        };
+        local name = config.Settings.Name
+        loops['properties'] = config.Renderstep(game:GetService("RunService").RenderStepped, function()
+            if instance:IsDescendantOf(dwWorkspace) and instance.PrimaryPart ~= nil and config.Toggles.Enabled and vars['onscreen'] then
+                if config.Toggles.Distance and config.Toggles.Name then
+                    e.Text.Name.Text = name.." [ "..tostring(math.ceil(maths.GetDistance(Vector2_new(instance.PrimaryPart.Position.X, instance.PrimaryPart.Position.Y)))).." ]"
+                else
+                    if config.Toggles.Name then
+                        e.Text.Name.Text = name
+                    end
+                    if config.Toggles.Distance then
+                        e.Text.Name.Text = "[ "..tostring(math.ceil(maths.GetDistance(Vector2_new(instance.PrimaryPart.Position.X, instance.PrimaryPart.Position.Y)))).." ]"
+                    end
+                end
+                e.Text.Timeleft.Text = tostring(math.ceil(blowuptime))
+                --Visible
+                if maths.GetDistance(Vector2_new(instance.PrimaryPart.Position.X, instance.PrimaryPart.Position.Y)) > config.Settings.Distance then
+                    setvis(false)
+                else
+                    e.Text.Name.Visible = config.Toggles.Name
+                    e.Text.Timeleft.Visible = config.Toggles.Timeleft
+                    e.Core.Blast.Visible = config.Toggles.Radius
+                end
+                --Radius
+                e.Core.Blast.Radius = config.Settings.Radius
+                --Color
+                e.Text.Name.Color = Color3_fromRGB(255, 255, 255)
+                e.Text.Timeleft.Color = Color3_fromRGB(255, 255, 255)
+                pulse.text = pulsing_3_lerp(0.1, 1, 0.01, 17)
+                if deltaTime > (config.Settings.Duration/1.6) then
+                    e.Text.Timeleft.Transparency = pulse.text
+                    e.Text.Timeleft.Color = Color3_fromRGB(255, 0, 0)
+                    e.Core.Blast.Transparency = pulse.text
+                elseif deltaTime > (config.Settings.Duration/4) then
+                    e.Text.Timeleft.Transparency = 1
+                    e.Text.Timeleft.Color = Color3_fromRGB(255, 191, 0)
+                else
+                    e.Text.Timeleft.Transparency = 1
+                    e.Text.Timeleft.Color = Color3_fromRGB(255, 255, 255)
+                end
+                e.Core.Blast.Color = config.Settings.Color
+            else
+                setvis(false)
+            end
+        end)
+        loops['nilcheck'] = config.Renderstep(game:GetService("RunService").RenderStepped, function()
+            if instance:IsDescendantOf(dwWorkspace) == false or instance ~= nil or instance.Parent ~= nil or (deltaTime > config.Settings.Duration) then
+                setvis(false)
+                delete()
+            end
+        end)
+    elseif string.lower(type) == "item" then
+        local e = {
+            ['Text'] = {Name_Distance = drawing_new("Text")};
+            ['Part'] = {Box = Instance.new('Part', game.Workspace)},
+        };
+        local loops = table.create(3)
+        for i,v in pairs(e.Text) do
+            v.Visible = false
+            v.Outline = true
+            v.Center = true
+        end
+        for i,v in pairs(e.Part) do
+            v.Enabled = false
+            if instance.ClassName == "Model" then
+                v.Anchor = instance
+                v.Size = instance:GetBoundingBox()
+            else
+                v.Anchor = instance.Parent
+                v.Size = instance.Parent:GetBoundingBox()
+            end
+        end
+        local setvis = function(value)
+            for i,v in pairs(e.Text) do
+                v.Visible = value
+            end
+            for i,v in pairs(e.Part) do
+                v.Enabled = value
+            end
+        end
+        local delete = function()
+            for i,v in pairs(loops) do
+                v:Disconnect()
+            end
+            task.wait(0.1)
+            for i,v in pairs(e.Text) do
+                v:Remove()
+            end
+            for i,v in pairs(e.Part) do
+                v:Destroy()
+            end
+        end
+        local vars = {
+            ['position'] = Vector3_new(0,0),
+            ['distance'] = 0,
+            ['onscreen'] = false,
+        };
+        loops['math'] = config.Renderstep(dwRunservice.RenderStepped, function()
+            if instance:IsDescendantOf(dwWorkspace) then
+                if instance.ClassName == "Model" then
+                    vars['distance'] = maths.GetDistance(maths.Vec3_Vec2(instance.PrimaryPart.Position))
+                    vars['position'], vars['onscreen'] = maths.WorldToScreen(instance.PrimaryPart.Position)
+                else
+                    vars['distance'] = maths.GetDistance(maths.Vec3_Vec2(instance.Position))
+                    vars['position'], vars['onscreen'] = maths.WorldToScreen(instance.Position)
+                end
+            end
+        end)
+        loops['position'] = config.Renderstep(dwRunservice.RenderStepped, function()
+            if instance:IsDescendantOf(dwWorkspace) then
+                if vars['onscreen'] then
+                    e.Text.Name_Distance.Position = Vector2_new(vars['position'].X, vars['position'].Y)
+                end
+            end
+        end)
+        loops['properties'] = config.Renderstep(dwRunservice.RenderStepped, function()
+            if instance:IsDescendantOf(dwWorkspace) then
+                if vars['onscreen'] and config.Toggles.Enabled and vars['distance'] < config.Settings.Distance then
+                    if config.Toggles.Distance and config.Toggles.Name then
+                        e.Text.Name_Distance.Text = config.Settings.Name.." [ "..tostring(math.ceil(vars['distance'])).." ]"
+                    else
+                        if config.Toggles.Name then
+                            e.Text.Name_Distance.Text = config.Settings.Name
+                        end
+                        if config.Toggles.Distance then
+                            e.Text.Name_Distance.Text = "[ "..tostring(math.ceil(vars['distance'])).." ]"
+                        end
+                    end
+                    e.Part.Box.Color = config.Settings.Color
+                    e.Part.Box.Color.Visible = config.Toggles.Box
+                    e.Text.Name_Distance.Color = config.Settings.Color
+                    e.Text.Name_Distance.Visible = config.Toggles.Name or config.Toggles.Distance
+                else
+                    setvis(false)
+                end
+            else
+                setvis(false)
+                delete()
+            end
+        end)
+    elseif string.lower(type) == "npc" then
+        local npc
+        local p = {
+            health = 1,
+            maxhealth = 100,
+        };
+        local e = {
+            ['Shadow'] = {Filled = drawing_new("Square", {Visible = false}), Box = drawing_new("Square", {Visible = false}), Healthbar = drawing_new("Square", {Visible = false})},
+            ['Core'] = {Box = drawing_new("Square", {Visible = false}), Tracer = Drawing.new("Line"), Healthbar = drawing_new("Square", {Visible = false})},
+            ['Text'] = {Health = drawing_new("Text", {Color = Color3_fromRGB(255, 255, 255), Font = 2, Size = 13}), Name_Distance = drawing_new("Text", {Color = Color3_fromRGB(255, 255, 255), Font = 2, Size = 13}), Weapon = drawing_new("Text", {Color = Color3_fromRGB(255, 255, 255), Font = 2, Size = 13}), Rank = drawing_new("Text", {Color = Color3_fromRGB(255, 255, 255), Font = 2, Size = 13})},
+        };
+        for i,v in pairs(e.Core) do
+            if i ~= "Tracer" then
+                v.Visible = false
+                v.Filled = false
+                v.Thickness = 1
+            else
+                v.Visible = false
+                v.Thickness = 1
+            end
+        end
+        e.Core.Healthbar.Filled = true
+        e.Core.Healthbar.Thickness = 0
+        for i,v in pairs(e.Shadow) do
+            v.Visible = false
+            v.Filled = false
+            v.Thickness = 1.5
+            if i == 'Filled' then
+                v.Color = Color3_fromRGB(0, 0, 0)
+            else
+                v.Color = Color3_fromRGB(32, 32, 32)
+            end
+        end
+        e.Shadow.Healthbar.Filled = true
+        e.Shadow.Filled.Filled = true
+        for i,v in pairs(e.Text) do
+            v.Visible = false
+            v.Outline = true
+            v.Center = true
+        end
+        e.Text.Rank.Center = false
+        e.Text.Weapon.Center = false
+        local setvis = function(value)
+            for i,v in pairs(e.Shadow) do
+                v.Visible = value
+            end
+            for i,v in pairs(e.Core) do
+                v.Visible = value
+            end
+            for i,v in pairs(e.Text) do
+                v.Visible = value
+            end
+        end
+        local setcolor = function(value)
+            if value == "team" then
+                for i,v in pairs(e.Core) do
+                    v.Color = config.Settings.TColor
+                end
+            end
+            if value == "enemy" then
+                for i,v in pairs(e.Core) do
+                    v.Color = config.Settings.EColor
+                end
+            end
+        end
+        local loops = table.create(6)
+        local vars = {
+            ['position'] = Vector3_new(0,0,0),
+            ['size'] = Vector2_new(0,0),
+            ['tonscreen'] = false,
+            ['bonscreen'] = false,
+        };
+        local delete = function()
+            for i,v in pairs(loops) do
+                v:Disconnect()
+            end
+            task.wait(0.1)
+            for i,v in pairs(e.Text) do
+                v:Remove()
+            end
+            for i,v in pairs(e.Core) do
+                if i == 'Tracer' then
+                    v:Remove()
+                else
+                    v:Remove()
+                end
+            end
+            for i,v in pairs(e.Shadow) do
+                v:Remove()
+            end
+        end
+        --making a new thread for perf reasons and optimizing lmfao
+        task_spawn(function()
+            loops['math'] = config.Renderstep(game:GetService("RunService").RenderStepped, function()
+                if instance ~= nil then
+                    npc = getcharacter(instance)
+                    if game.PlaceId == 123 then
+                        if npc ~= nil and npc:FindFirstChild('Humanoid') ~= nil then
+                            p.health = npc:FindFirstChild('Humanoid').Health
+                            p.maxhealth = npc:FindFirstChild('Humanoid').MaxHealth
+                        end
+                    end
+                end
+                if config.Toggles.Enabled and instance ~= nil and npc ~= nil then
+                    vars['position'], vars['size'], vars['tonscreen'], vars['bonscreen'] = maths.GetBoundingBox(npc)
+                end
+            end)
+        end)
+        task_spawn(function()
+            loops['visible'] = config.Renderstep(game:GetService("RunService").RenderStepped, function()
+                if config.Toggles.Enabled and instance ~= nil and npc ~= nil and p.health > 0 and (vars['tonscreen'] or vars['bonscreen']) and maths.GetDistance(maths.Vec3_Vec2(npc.PrimaryPart.Position)) < config.Settings.Distance then
+                    e.Core.Box.Visible = config.Toggles.Box
+                        e.Shadow.Box.Visible = config.Toggles.Box
+                        e.Text.Name_Distance.Visible = config.Toggles.Name
+                        e.Text.Health.Visible = config.Toggles.Healthbar and p.health <= 95
+                        e.Core.Healthbar.Visible = config.Toggles.Healthbar
+                        e.Shadow.Filled.Visible = config.Toggles.Box and config.Settings.Filled
+                        e.Shadow.Healthbar.Visible = config.Toggles.Healthbar
+                        e.Text.Rank.Visible = config.Toggles.Rank
+                        e.Text.Weapon.Visible = config.Toggles.Weapon
+                        e.Core.Tracer.Visible = config.Toggles.Tracer
+                else
+                    setvis(false)
+                end
+            end)
+        end)
+        local name = instance.Name
+        task_spawn(function()
+            loops['properties'] = config.Renderstep(game:GetService("RunService").RenderStepped, function()
+                if config.Toggles.Enabled and instance ~= nil and npc ~= nil and p.health > 0 and (vars['tonscreen'] or vars['bonscreen']) and npc.PrimaryPart ~= nil then
+                    --Colors
+                    e.Text.Health.Color = Color3_fromRGB((255 - p.health) - 50, p.health * 2.5, 0)
+                    e.Core.Healthbar.Color = Color3_fromRGB((255 - p.health) - 50, p.health * 2.5, 0)
+                    setcolor("enemy")
+                    --Other
+                    e.Text.Weapon.Text = getweapon(instance)
+                    e.Text.Rank.Text = getrank(instance)
+                    e.Text.Health.Text = tostring(p.health)
+                    if config.Settings.NoName then
+                        name = "Apollo"
+                    else
+                        name = instance.Name
+                    end
+                    if config.Toggles.Distance and config.Toggles.Name then
+                        e.Text.Name_Distance.Text = name.." [ "..tostring(math.ceil(maths.GetDistance(Vector2_new(npc.PrimaryPart.Position.X, npc.PrimaryPart.Position.Y)))).." ]"
+                    else
+                        if config.Toggles.Name then
+                            e.Text.Name_Distance.Text = name
+                        end
+                        if config.Toggles.Distance then
+                            e.Text.Name_Distance.Text = "[ "..tostring(math.ceil(maths.GetDistance(Vector2_new(npc.PrimaryPart.Position.X, npc.PrimaryPart.Position.Y)))).." ]"
+                        end
+                    end
+                end
+            end)
+        end)
+        --Position
+        task_spawn(function()
+            loops['position'] = config.Renderstep(game:GetService("RunService").RenderStepped, function()
+                if config.Toggles.Enabled and instance ~= nil and npc ~= nil and p.health > 0 and (vars['tonscreen'] or vars['bonscreen']) then
+                    e.Core.Box.Position = vars['position']
+                    e.Shadow.Filled.Position = vars['position']
+                    e.Shadow.Filled.Size = vars['size']
+                    e.Text.Name_Distance.Position = Vector2_new(vars['position'].X + vars['size'].X/2,vars['position'].Y - 4 - e.Text.Name_Distance.TextBounds.Y)
+                    e.Core.Box.Size = vars['size']
+                    e.Shadow.Box.Size = vars['size']
+                    e.Shadow.Box.Position = Vector2_new(vars['position'].X + 1,vars['position'].Y + 1)
+                    e.Core.Healthbar.Position = Vector2_new(vars['position'].X - 4.5, (vars['position'].Y) + (vars['size'].Y - ((vars['size'].Y) * (1-((p.maxhealth - p.health) / p.maxhealth)))))
+                    e.Core.Healthbar.Size = Vector2_new(2, ((vars['size'].Y + 0.5) * (1-((p.maxhealth - p.health) / p.maxhealth))))
+                    e.Shadow.Healthbar.Size = Vector2_new(3, vars['size'].Y + 1)
+                    e.Shadow.Healthbar.Position = Vector2_new(vars['position'].X - 4.5,vars['position'].Y)
+                    e.Text.Health.Position = Vector2_new(vars['position'].X - 8, e.Core.Healthbar.Position.Y -5)
+                    e.Text.Rank.Position = Vector2_new(vars['position'].X + vars['size'].X + 4, vars['position'].Y)
+                    e.Text.Weapon.Position = Vector2_new(vars['position'].X + vars['size'].X + 4, vars['position'].Y)
+                    e.Core.Tracer.From = Vector2_new(dwCamera.ViewportSize.X/2, dwCamera.ViewportSize.Y)
+                    e.Core.Tracer.To = Vector2_new(vars['position'].X + vars['size'].X/2, vars['position'].Y + vars['size'].Y)
+                    if e.Text.Weapon.Visible then
+                        e.Text.Rank.Position = Vector2_new(vars['position'].X + vars['size'].X + 4, vars['position'].Y + e.Text.Weapon.TextBounds.Y)
+                    else
+                        e.Text.Rank.Position = Vector2_new(vars['position'].X + vars['size'].X + 4, vars['position'].Y)
+                    end
+                end
+            end)
+        end)
+        local pulse = {
+            fill = 0,
+            text = 0,
+            core = 0,
+        };
+        --funny lerp animations
+        task_spawn(function()
+            loops['animations'] = config.Renderstep(game:GetService("RunService").RenderStepped, function()
+                if config.Toggles.Enabled and instance ~= nil and npc ~= nil and p.health > 0 and (vars['tonscreen'] or vars['bonscreen']) then
+                    pulse.fill = pulsing_2_lerp(0, config.Settings.Opacity, 0.001)
+                    pulse.text = pulsing_lerp(0.5, 1, 0.001)
+                    pulse.core = pulsing_lerp(0.3, 1, 0.001)
+                    if config.Settings.Pulse.Tracer then
+                        e.Core.Tracer.Transparency = pulse.core
+                    else
+                        e.Core.Tracer.Transparency = 1
+                    end
+                    if config.Settings.Pulse.Healthbar then
+                        e.Core.Healthbar.Transparency = pulse.core
+                        e.Shadow.Healthbar.Transparency = pulse.core
+                        e.Text.Health.Transparency = pulse.text
+                    else
+                        e.Core.Healthbar.Transparency = 1
+                        e.Shadow.Healthbar.Transparency = 1
+                        e.Text.Health.Transparency = 1
+                    end
+                    if config.Settings.Pulse.Box then
+                        e.Core.Box.Transparency = pulse.core
+                        e.Shadow.Box.Transparency = pulse.core
+                    else
+                        e.Core.Box.Transparency = 1
+                        e.Shadow.Box.Transparency = 1
+                    end
+                    if config.Settings.Pulse.Filled then
+                        e.Shadow.Filled.Transparency = pulse.fill
+                    else
+                        e.Shadow.Filled.Transparency = config.Settings.Opacity
+                    end
+                    if config.Settings.Pulse.Name_Distance then
+                        e.Text.Name_Distance.Transparency = pulse.text
+                    else
+                        e.Text.Name_Distance.Transparency = 1
+                    end
+                    if config.Settings.Pulse.Weapon then
+                        e.Text.Weapon.Transparency = pulse.text
+                    else
+                        e.Text.Weapon.Transparency = 1
+                    end
+                    if config.Settings.Pulse.Rank then
+                        e.Text.Rank.Transparency = pulse.text
+                    else
+                        e.Text.Rank.Transparency = 1
+                    end
+                end
+            end)
+        end)
+        task_spawn(function()
+            loops['deathcheck'] = config.Renderstep(game:GetService("RunService").RenderStepped, function()
+                if (instance == nil and npc == nil) or p.health <= 0 then
+                    setvis(false)
+                    if config.Debug then
+                        print(tostring(instance), 'deleted')
+                    end
+                    delete()
+                end
+            end)
+        end)
+    elseif string.lower(type) == "crosshair" then
+        print("crosshair has not been added yet please wait")
+    else
+        print("wrong args")
+    end
+end
+return esp;

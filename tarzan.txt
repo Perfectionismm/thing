@@ -1,5 +1,4 @@
 local esp = {cache = {connections = {}}};
-local maths = loadstring(game:HttpGet('https://raw.githubusercontent.com/JayGitCuh/Apollo/main/libraries/math.lua'))()
 local drawing = loadstring(game:HttpGet('https://raw.githubusercontent.com/JayGitCuh/useful-stuff/main/vozoidextension.lua'))()
 local drawing_new = function(class, properties)
     if class == "3dCircle" then
@@ -34,11 +33,9 @@ local math_tan = math.tan
 local math_rad = math.rad
 local Ray_new = Ray.new
 local task_spawn = task.spawn
-local World_To_Screen = maths.WorldToScreen
 local Color3_fromRGB = Color3.fromRGB
 local UDim2_new = UDim2.new
 local TweenInfo_new = TweenInfo.new
-local Vec2_Udim = maths.Vec2Udim
 --Cool functions
 local getcharacter = function(player)
     if game.PlaceId == 123 then
@@ -74,6 +71,12 @@ local getweapon = function(player)
         return 'This place is not supported'
     end
 end
+local function Vec3_Vec2(Vec)
+	return Vector2_new(Vec.X, Vec.Y)
+end
+local function GetDistance(one)
+	return (one - Vector2_new(dwCamera.CFrame.Position.X, dwCamera.CFrame.Position.Y)).Magnitude
+end
 local function lerp(a,b,t) -- a = current_value, b = target_value, t = percent max_value = 1
     return a * (1-t) + b * t
 end
@@ -100,6 +103,37 @@ local function pulsing_2_lerp(a, b, t)
     -- apply the pulsing factor to the lerp calculation
     local value = lerp(a, b, t) + pulse_factor
     return value
+end
+local vTop
+local vBottom
+local top, topIsRendered
+local bottom, bottomIsRendered
+local _width
+local _height
+local boxSize
+local boxPosition
+local GetBoundingBox = function(Character)
+    if Character ~= nil and Character.PrimaryPart ~= nil then
+        if Character:FindFirstChild('UpperTorso') ~= nil then
+            if game.PlaceId == 2555870920 then
+                vTop = Character.UpperTorso.Position + (Character.UpperTorso.CFrame.UpVector * 10) + dwCamera.CFrame.UpVector
+                vBottom = Character.UpperTorso.Position - (Character.UpperTorso.CFrame.UpVector * 12) - dwCamera.CFrame.UpVector
+            else
+                vTop = Character.UpperTorso.Position + (Character.UpperTorso.CFrame.UpVector * 1.8) + dwCamera.CFrame.UpVector
+                vBottom = Character.UpperTorso.Position - (Character.UpperTorso.CFrame.UpVector * 2.5) - dwCamera.CFrame.UpVector
+            end
+        elseif Character.PrimaryPart ~= nil then
+            vTop = Character.PrimaryPart.Position + (Character.PrimaryPart.CFrame.UpVector * 1.8) + dwCamera.CFrame.UpVector
+            vBottom = Character.PrimaryPart.Position - (Character.PrimaryPart.CFrame.UpVector * 2.5) - dwCamera.CFrame.UpVector
+        end
+        top, topIsRendered = dwCamera:WorldToViewportPoint(vTop)
+        bottom, bottomIsRendered = dwCamera:WorldToViewportPoint(vBottom)
+        _width = math.max(math.floor(math.abs(top.X - bottom.X)), 3)
+        _height = math.max(math.floor(math.max(math.abs(bottom.Y - top.Y), _width / 2)), 3)
+        boxSize = Vector2.new(math.floor(math.max(_height / 1.5, _width)), _height)
+        boxPosition = Vector2.new(math.floor(top.X * 0.5 + bottom.X * 0.5 - boxSize.X * 0.5), math.floor(math.min(top.Y, bottom.Y)))
+        return boxPosition, boxSize, topIsRendered, bottomIsRendered
+    end
 end
 esp.Render = function(instance: Instance, type: string, config: table)
     config = config
@@ -217,13 +251,13 @@ esp.Render = function(instance: Instance, type: string, config: table)
                     end
                 end
                 if config.Toggles.Enabled and instance ~= nil and player ~= nil then
-                    vars['position'], vars['size'], vars['tonscreen'], vars['bonscreen'] = maths.GetBoundingBox(player)
+                    vars['position'], vars['size'], vars['tonscreen'], vars['bonscreen'] = GetBoundingBox(player)
                 end
             end)
         end)
         task_spawn(function()
             loops['visible'] = config.Renderstep(game:GetService("RunService").RenderStepped, function()
-                if config.Toggles.Enabled and instance ~= nil and player ~= nil and player.PrimaryPart ~= nil and p.health > 0 and (vars['tonscreen'] or vars['bonscreen']) and maths.GetDistance(maths.Vec3_Vec2(player.PrimaryPart.Position)) < config.Settings.Distance then
+                if config.Toggles.Enabled and instance ~= nil and player ~= nil and player.PrimaryPart ~= nil and p.health > 0 and (vars['tonscreen'] or vars['bonscreen']) and GetDistance(Vec3_Vec2(player.PrimaryPart.Position)) < config.Settings.Distance then
                     if isfriendly(instance, dwLocalPlayer) then
                         e.Core.Box.Visible = config.Toggles.Box and config.Conditions.TeamCheck
                         e.Shadow.Box.Visible = config.Toggles.Box and config.Conditions.TeamCheck
@@ -276,13 +310,13 @@ esp.Render = function(instance: Instance, type: string, config: table)
                         name = instance.Name
                     end
                     if config.Toggles.Distance and config.Toggles.Name then
-                        e.Text.Name_Distance.Text = name.." [ "..tostring(math.ceil(maths.GetDistance(Vector2_new(player.PrimaryPart.Position.X, player.PrimaryPart.Position.Y)))).." ]"
+                        e.Text.Name_Distance.Text = name.." [ "..tostring(math.ceil(GetDistance(Vector2_new(player.PrimaryPart.Position.X, player.PrimaryPart.Position.Y)))).." ]"
                     else
                         if config.Toggles.Name then
                             e.Text.Name_Distance.Text = name
                         end
                         if config.Toggles.Distance then
-                            e.Text.Name_Distance.Text = "[ "..tostring(math.ceil(maths.GetDistance(Vector2_new(player.PrimaryPart.Position.X, player.PrimaryPart.Position.Y)))).." ]"
+                            e.Text.Name_Distance.Text = "[ "..tostring(math.ceil(GetDistance(Vector2_new(player.PrimaryPart.Position.X, player.PrimaryPart.Position.Y)))).." ]"
                         end
                     end
                 end
@@ -295,7 +329,7 @@ esp.Render = function(instance: Instance, type: string, config: table)
                     e.Core.Box.Position = vars['position']
                     e.Shadow.Filled.Position = vars['position']
                     e.Shadow.Filled.Size = vars['size']
-                    e.Text.Name_Distance.Position = Vector2_new(vars['position'].X + vars['size'].X/2,vars['position'].Y - 4 - e.Text.Name_Distance.TextBounds.Y)
+                    e.Text.Name_Distance.Position = Vector2_new(vars['position'].X + vars['size'].X/2,vars['position'].Y - 4 - 12)
                     e.Core.Box.Size = vars['size']
                     e.Shadow.Box.Size = vars['size']
                     e.Shadow.Box.Position = Vector2_new(vars['position'].X + 1,vars['position'].Y + 1)
@@ -309,7 +343,7 @@ esp.Render = function(instance: Instance, type: string, config: table)
                     e.Core.Tracer.From = Vector2_new(dwCamera.ViewportSize.X/2, dwCamera.ViewportSize.Y)
                     e.Core.Tracer.To = Vector2_new(vars['position'].X + vars['size'].X/2, vars['position'].Y + vars['size'].Y)
                     if e.Text.Weapon.Visible then
-                        e.Text.Rank.Position = Vector2_new(vars['position'].X + vars['size'].X + 4, vars['position'].Y + e.Text.Weapon.TextBounds.Y)
+                        e.Text.Rank.Position = Vector2_new(vars['position'].X + vars['size'].X + 4, vars['position'].Y + 12)
                     else
                         e.Text.Rank.Position = Vector2_new(vars['position'].X + vars['size'].X + 4, vars['position'].Y)
                     end
@@ -436,7 +470,7 @@ esp.Render = function(instance: Instance, type: string, config: table)
             deltaTime = os.clock() - startTime
             blowuptime = config.Settings.Duration - deltaTime
             if instance:IsDescendantOf(dwWorkspace) and instance.PrimaryPart ~= nil then
-                vars['position'], vars['onscreen'] = maths.WorldToScreen(instance.PrimaryPart.Position)
+                vars['position'], vars['onscreen'] = dwCamera:WorldToViewportPoint(instance.PrimaryPart.Position)
             end
         end)
         loops['position'] = config.Renderstep(game:GetService("RunService").RenderStepped, function()
@@ -454,18 +488,18 @@ esp.Render = function(instance: Instance, type: string, config: table)
         loops['properties'] = config.Renderstep(game:GetService("RunService").RenderStepped, function()
             if instance:IsDescendantOf(dwWorkspace) and instance.PrimaryPart ~= nil and config.Toggles.Enabled and vars['onscreen'] then
                 if config.Toggles.Distance and config.Toggles.Name then
-                    e.Text.Name.Text = name.." [ "..tostring(math.ceil(maths.GetDistance(Vector2_new(instance.PrimaryPart.Position.X, instance.PrimaryPart.Position.Y)))).." ]"
+                    e.Text.Name.Text = name.." [ "..tostring(math.ceil(GetDistance(Vector2_new(instance.PrimaryPart.Position.X, instance.PrimaryPart.Position.Y)))).." ]"
                 else
                     if config.Toggles.Name then
                         e.Text.Name.Text = name
                     end
                     if config.Toggles.Distance then
-                        e.Text.Name.Text = "[ "..tostring(math.ceil(maths.GetDistance(Vector2_new(instance.PrimaryPart.Position.X, instance.PrimaryPart.Position.Y)))).." ]"
+                        e.Text.Name.Text = "[ "..tostring(math.ceil(GetDistance(Vector2_new(instance.PrimaryPart.Position.X, instance.PrimaryPart.Position.Y)))).." ]"
                     end
                 end
                 e.Text.Timeleft.Text = tostring(math.ceil(blowuptime))
                 --Visible
-                if maths.GetDistance(Vector2_new(instance.PrimaryPart.Position.X, instance.PrimaryPart.Position.Y)) > config.Settings.Distance then
+                if GetDistance(Vector2_new(instance.PrimaryPart.Position.X, instance.PrimaryPart.Position.Y)) > config.Settings.Distance then
                     setvis(false)
                 else
                     e.Text.Name.Visible = config.Toggles.Name
@@ -549,11 +583,11 @@ esp.Render = function(instance: Instance, type: string, config: table)
         loops['math'] = config.Renderstep(dwRunservice.RenderStepped, function()
             if instance:IsDescendantOf(dwWorkspace) then
                 if instance.ClassName == "Model" then
-                    vars['distance'] = maths.GetDistance(maths.Vec3_Vec2(instance.PrimaryPart.Position))
-                    vars['position'], vars['onscreen'] = maths.WorldToScreen(instance.PrimaryPart.Position)
+                    vars['distance'] = GetDistance(Vec3_Vec2(instance.PrimaryPart.Position))
+                    vars['position'], vars['onscreen'] = dwCamera:WorldToViewportPoint(instance.PrimaryPart.Position)
                 else
-                    vars['distance'] = maths.GetDistance(maths.Vec3_Vec2(instance.Position))
-                    vars['position'], vars['onscreen'] = maths.WorldToScreen(instance.Position)
+                    vars['distance'] = GetDistance(Vec3_Vec2(instance.Position))
+                    vars['position'], vars['onscreen'] = dwCamera:WorldToViewportPoint(instance.Position)
                 end
             end
         end)
@@ -693,13 +727,13 @@ esp.Render = function(instance: Instance, type: string, config: table)
                     end
                 end
                 if config.Toggles.Enabled and instance ~= nil and npc ~= nil then
-                    vars['position'], vars['size'], vars['tonscreen'], vars['bonscreen'] = maths.GetBoundingBox(npc)
+                    vars['position'], vars['size'], vars['tonscreen'], vars['bonscreen'] = GetBoundingBox(npc)
                 end
             end)
         end)
         task_spawn(function()
             loops['visible'] = config.Renderstep(game:GetService("RunService").RenderStepped, function()
-                if config.Toggles.Enabled and instance ~= nil and npc ~= nil and p.health > 0 and (vars['tonscreen'] or vars['bonscreen']) and maths.GetDistance(maths.Vec3_Vec2(npc.PrimaryPart.Position)) < config.Settings.Distance then
+                if config.Toggles.Enabled and instance ~= nil and npc ~= nil and p.health > 0 and (vars['tonscreen'] or vars['bonscreen']) and GetDistance(Vec3_Vec2(npc.PrimaryPart.Position)) < config.Settings.Distance then
                     e.Core.Box.Visible = config.Toggles.Box
                         e.Shadow.Box.Visible = config.Toggles.Box
                         e.Text.Name_Distance.Visible = config.Toggles.Name
@@ -733,13 +767,13 @@ esp.Render = function(instance: Instance, type: string, config: table)
                         name = instance.Name
                     end
                     if config.Toggles.Distance and config.Toggles.Name then
-                        e.Text.Name_Distance.Text = name.." [ "..tostring(math.ceil(maths.GetDistance(Vector2_new(npc.PrimaryPart.Position.X, npc.PrimaryPart.Position.Y)))).." ]"
+                        e.Text.Name_Distance.Text = name.." [ "..tostring(math.ceil(GetDistance(Vector2_new(npc.PrimaryPart.Position.X, npc.PrimaryPart.Position.Y)))).." ]"
                     else
                         if config.Toggles.Name then
                             e.Text.Name_Distance.Text = name
                         end
                         if config.Toggles.Distance then
-                            e.Text.Name_Distance.Text = "[ "..tostring(math.ceil(maths.GetDistance(Vector2_new(npc.PrimaryPart.Position.X, npc.PrimaryPart.Position.Y)))).." ]"
+                            e.Text.Name_Distance.Text = "[ "..tostring(math.ceil(GetDistance(Vector2_new(npc.PrimaryPart.Position.X, npc.PrimaryPart.Position.Y)))).." ]"
                         end
                     end
                 end
@@ -752,7 +786,7 @@ esp.Render = function(instance: Instance, type: string, config: table)
                     e.Core.Box.Position = vars['position']
                     e.Shadow.Filled.Position = vars['position']
                     e.Shadow.Filled.Size = vars['size']
-                    e.Text.Name_Distance.Position = Vector2_new(vars['position'].X + vars['size'].X/2,vars['position'].Y - 4 - e.Text.Name_Distance.TextBounds.Y)
+                    e.Text.Name_Distance.Position = Vector2_new(vars['position'].X + vars['size'].X/2,vars['position'].Y - 4 - 12)
                     e.Core.Box.Size = vars['size']
                     e.Shadow.Box.Size = vars['size']
                     e.Shadow.Box.Position = Vector2_new(vars['position'].X + 1,vars['position'].Y + 1)
@@ -766,7 +800,7 @@ esp.Render = function(instance: Instance, type: string, config: table)
                     e.Core.Tracer.From = Vector2_new(dwCamera.ViewportSize.X/2, dwCamera.ViewportSize.Y)
                     e.Core.Tracer.To = Vector2_new(vars['position'].X + vars['size'].X/2, vars['position'].Y + vars['size'].Y)
                     if e.Text.Weapon.Visible then
-                        e.Text.Rank.Position = Vector2_new(vars['position'].X + vars['size'].X + 4, vars['position'].Y + e.Text.Weapon.TextBounds.Y)
+                        e.Text.Rank.Position = Vector2_new(vars['position'].X + vars['size'].X + 4, vars['position'].Y + 12)
                     else
                         e.Text.Rank.Position = Vector2_new(vars['position'].X + vars['size'].X + 4, vars['position'].Y)
                     end

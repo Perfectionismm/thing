@@ -38,8 +38,8 @@ local UDim2_new = UDim2.new
 local TweenInfo_new = TweenInfo.new
 --Cool functions
 local getcharacter = function(player)
-    if game.PlaceId == 123 then
-
+    if game.PlaceId == 13253735473 then
+        return player
     else
         if player.ClassName == "Model" then
             return player

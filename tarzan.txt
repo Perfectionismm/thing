@@ -552,10 +552,10 @@ esp.Render = function(instance: Instance, type: string, config: table)
             v.CanTouch = false
             if instance.ClassName == "Model" then
                 v.Parent = instance
-                v.Size = instance:GetBoundingBox()
+                v.CFrame, v.Size = instance:GetBoundingBox()
             else
                 v.Parent = instance
-                v.Size = instance.Parent:GetBoundingBox()
+                v.CFrame, v.Size = instance.Parent:GetBoundingBox()
             end
             --v.Transparency = 0.5
         end

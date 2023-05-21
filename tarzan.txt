@@ -546,24 +546,29 @@ esp.Render = function(instance: Instance, type: string, config: table)
             v.Center = true
         end
         for i,v in pairs(e.Part) do
-            v.Enabled = false
+            v.Transparency = 1
+            v.Anchor = true
             v.CanCollide = false
             v.CanTouch = false
             if instance.ClassName == "Model" then
-                v.Anchor = instance
+                v.Parent = instance
                 v.Size = instance:GetBoundingBox()
             else
-                v.Anchor = instance.Parent
+                v.Parent = instance
                 v.Size = instance.Parent:GetBoundingBox()
             end
-            v.Transparency = 0.5
+            --v.Transparency = 0.5
         end
         local setvis = function(value)
             for i,v in pairs(e.Text) do
                 v.Visible = value
             end
             for i,v in pairs(e.Part) do
-                v.Enabled = value
+                if value then
+                    v.Transparency = 0.5
+                else
+                    v.Transparency = 1
+                end
             end
         end
         local delete = function()
@@ -614,8 +619,12 @@ esp.Render = function(instance: Instance, type: string, config: table)
                             e.Text.Name_Distance.Text = "[ "..tostring(math.ceil(vars['distance'])).." ]"
                         end
                     end
+                    if config.Toggles.Box then
+                        e.Part.Box.Transparency = 0.5
+                    else
+                        e.Part.Box.Transparency = 1
+                    end
                     e.Part.Box.Color = config.Settings.Color
-                    e.Part.Box.Enabled = config.Toggles.Box
                     e.Text.Name_Distance.Color = config.Settings.Color
                     e.Text.Name_Distance.Visible = config.Toggles.Name or config.Toggles.Distance
                 else

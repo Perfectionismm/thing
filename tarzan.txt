@@ -556,7 +556,7 @@ esp.Render = function(instance: Instance, type: string, config: table)
             else
                 v.CFrame, v.Size = instance.Parent:GetBoundingBox()
             end
-            v.CFrame.Position = Vector3_new(0,0,0)
+            v.CFrame = CFrame.new(0,0,0)
             --v.Transparency = 0.5
         end
         local setvis = function(value)

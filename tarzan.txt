@@ -548,8 +548,9 @@ esp.Render = function(instance: Instance, type: string, config: table)
         for i,v in pairs(e.Part) do
             v.Transparency = 1
             v.Anchored = true
-            v.CanCollide = false
+            v.CanCollide = true
             v.CanTouch = false
+            v.CollisionGroup = 'BEANERRRRRSSS'
             if instance.ClassName == "Model" then
                 v.CFrame, v.Size = instance:GetBoundingBox()
             else

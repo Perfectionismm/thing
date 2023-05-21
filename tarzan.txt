@@ -537,7 +537,7 @@ esp.Render = function(instance: Instance, type: string, config: table)
     elseif string.lower(type) == "item" then
         local e = {
             ['Text'] = {Name_Distance = drawing_new("Text")};
-            ['Part'] = {Box = Instance.new('Part', game.Workspace)},
+            ['Part'] = {Box = Instance.new('Part', instance)},
         };
         local loops = table.create(3)
         for i,v in pairs(e.Text) do
@@ -547,7 +547,7 @@ esp.Render = function(instance: Instance, type: string, config: table)
         end
         for i,v in pairs(e.Part) do
             v.Transparency = 1
-            v.Anchor = true
+            v.Anchored = true
             v.CanCollide = false
             v.CanTouch = false
             if instance.ClassName == "Model" then

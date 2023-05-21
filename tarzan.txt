@@ -554,6 +554,7 @@ esp.Render = function(instance: Instance, type: string, config: table)
                 v.Anchor = instance.Parent
                 v.Size = instance.Parent:GetBoundingBox()
             end
+            v.Transparency = 0.5
         end
         local setvis = function(value)
             for i,v in pairs(e.Text) do

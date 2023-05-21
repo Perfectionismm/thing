@@ -628,7 +628,7 @@ esp.Render = function(instance: Instance, type: string, config: table)
                     else
                         e.Part.Box.Transparency = 1
                     end
-                    e.Part.Box.Color = config.Settings.Color
+                    e.Part.Box.Color3 = config.Settings.Color
                     e.Text.Name_Distance.Color = config.Settings.Color
                     e.Text.Name_Distance.Visible = config.Toggles.Name or config.Toggles.Distance
                 else

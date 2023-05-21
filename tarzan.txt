@@ -547,6 +547,8 @@ esp.Render = function(instance: Instance, type: string, config: table)
         end
         for i,v in pairs(e.Part) do
             v.Enabled = false
+            v.CanCollide = false
+            v.CanTouch = false
             if instance.ClassName == "Model" then
                 v.Anchor = instance
                 v.Size = instance:GetBoundingBox()

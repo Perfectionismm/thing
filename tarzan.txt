@@ -613,7 +613,7 @@ esp.Render = function(instance: Instance, type: string, config: table)
                         end
                     end
                     e.Part.Box.Color = config.Settings.Color
-                    e.Part.Box.Color.Visible = config.Toggles.Box
+                    e.Part.Box.Enabled = config.Toggles.Box
                     e.Text.Name_Distance.Color = config.Settings.Color
                     e.Text.Name_Distance.Visible = config.Toggles.Name or config.Toggles.Distance
                 else

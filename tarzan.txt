@@ -537,7 +537,7 @@ esp.Render = function(instance: Instance, type: string, config: table)
     elseif string.lower(type) == "item" then
         local e = {
             ['Text'] = {Name_Distance = drawing_new("Text")};
-            ['Part'] = {Box = Instance.new('Part', game.Workspace)},
+            ['Part'] = {Box = Instance.new('Part')},
         };
         local loops = table.create(3)
         for i,v in pairs(e.Text) do
@@ -556,6 +556,7 @@ esp.Render = function(instance: Instance, type: string, config: table)
             else
                 v.CFrame, v.Size = instance.Parent:GetBoundingBox()
             end
+            v.Parent = instance
             --v.Transparency = 0.5
         end
         local setvis = function(value)
@@ -602,11 +603,6 @@ esp.Render = function(instance: Instance, type: string, config: table)
             if instance:IsDescendantOf(dwWorkspace) then
                 if vars['onscreen'] then
                     e.Text.Name_Distance.Position = Vector2_new(vars['position'].X, vars['position'].Y)
-                    if instance.ClassName == "Model" then
-                        e.Part.Box.CFrame, e.Part.Box.Size = instance:GetBoundingBox()
-                    else
-                        e.Part.Box.CFrame, e.Part.Box.Size = instance.Parent:GetBoundingBox()
-                    end
                 end
             end
         end)
@@ -639,6 +635,12 @@ esp.Render = function(instance: Instance, type: string, config: table)
                 delete()
             end
         end)
+        if instance.ClassName == "Model" then
+            --e.Part.Box.CFrame, e.Part.Box.Size = instance:GetBoundingBox()
+        else
+            --e.Part.Box.CFrame, e.Part.Box.Size = instance.Parent:GetBoundingBox()
+        end
+        --e.Part.Box.Parent = instance
     elseif string.lower(type) == "npc" then
         local npc
         local p = {

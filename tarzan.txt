@@ -537,20 +537,20 @@ esp.Render = function(instance: Instance, type: string, config: table)
     elseif string.lower(type) == "item" then
         local e = {
             ['Text'] = {Name_Distance = drawing_new("Text")};
-            ['Part'] = {Box = Instance.new('Part', game:GetService("Workspace").Ignore)},
+            ['Part'] = {Box = Instance.new("BoxHandleAdornment", dwWorkspace)},
         };
         local loops = table.create(3)
         for i,v in pairs(e.Text) do
             v.Visible = false
             v.Outline = true
             v.Center = true
+            v.Size = 13
         end
         for i,v in pairs(e.Part) do
             v.Transparency = 1
-            v.Anchored = true
-            v.CanCollide = false
-            v.CanTouch = false
-            v.CollisionGroup = 'BEANERRRRRSSS'
+            v.ZIndex = 1
+            v.AlwaysOnTop = true
+            v.Adornee = instance
             if instance.ClassName == "Model" then
                 v.CFrame, v.Size = instance:GetBoundingBox()
             else

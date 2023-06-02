@@ -1,0 +1,365 @@
+local aimbot = {cache = {connections = {}}};
+function aimbot:AddConnection(connection, name, callback)
+    callback = type(name) == "function" and name or callback
+    connection = connection:Connect(callback)
+    if name ~= callback then
+        aimbot.cache.connections[name] = connection
+    else
+        table.insert(aimbot.cache.connections, connection)
+    end
+    return connection
+end
+local function lerp(a,b,t) -- a = current_value, b = target_value, t = percent max_value = 1
+    return a * (1-t) + b * t
+end
+local function pulsing_lerp(a, b, t)
+    local sine_value = math.sin(os.clock() * 5) -- change the 10 to set the speed of the pulsing
+    local pulse = (sine_value + 0.1) / 2 -- transform the sine value to range between 0 and 1
+    local pulse_factor = lerp(1, -1, pulse) -- map the pulse to a factor ranging from 1 to -1 0.1
+    -- apply the pulsing factor to the lerp calculation
+    local value = lerp(a, b, t) + pulse_factor
+    return value
+end
+local ContentProvider = game:GetService("ContentProvider")
+local dwRunservice = game:GetService("RunService");
+local dwPlayers = game:GetService('Players');
+local dwLocalPlayer = dwPlayers.LocalPlayer;
+local dwMouse = dwLocalPlayer:GetMouse();
+local dwWorkspace = game:GetService("Workspace");
+local dwCamera = dwWorkspace.CurrentCamera;
+local dwUserInputService = game:GetService("UserInputService");
+--Optimization Vars
+local Vector3_new = Vector3.new
+local Vector2_new = Vector2.new
+local math_tan = math.tan
+local math_rad = math.rad
+local math_ceil = math.ceil
+local Ray_new = Ray.new
+local task_spawn = task.spawn
+local Color3_fromRGB = Color3.fromRGB
+local UDim2_new = UDim2.new
+local TweenInfo_new = TweenInfo.new
+local function Vec3_Vec2(Vec)
+	return Vector2_new(Vec.X, Vec.Y)
+end
+local function GetDistance(one)
+	return (one - Vector2_new(dwCamera.CFrame.Position.X, dwCamera.CFrame.Position.Y)).Magnitude
+end
+--Cool functions
+local getcharacter = function(player)
+    if game.PlaceId == 123 then
+    else
+        if player.ClassName == "Model" then
+            return player
+        else
+            return player.Character
+        end
+    end
+end
+aimbot.Start = function(config, type)
+    config = config
+    if string.lower(type) == 'players' then
+        local e = {
+            ['Shadow'] = {Circle = Drawing.new('Circle')},
+            ['Core'] = {Circle = Drawing.new('Circle')},
+            ['Text'] = {Info = Drawing.new('Text')},
+        };
+        for i,v in pairs(e.Core) do
+            v.Visible = false
+            v.Thickness = 1
+        end
+        for i,v in pairs(e.Shadow) do
+            v.Visible = false
+            v.Filled = false
+            v.Thickness = 2.5
+            v.Color = Color3_fromRGB(0, 0, 0)
+        end
+        for i,v in pairs(e.Text) do
+            v.Visible = false
+            v.Outline = true
+            v.Center = true
+        end
+        local isfriend = function(Player, Self)
+            if Player ~= nil and Self ~= nil then
+                if dwLocalPlayer:IsFriendsWith(Player.UserId) and config.Conditions.FriendCheck then
+                    return false
+                else
+                    return true
+                end
+            end
+        end
+        local isteam = function(Player:Player, Self:Player)
+            if Player ~= nil and Self ~= nil and Player.TeamColor == Self.TeamColor and config.Conditions.TeamCheck then
+                return false
+            else
+                return true
+            end
+        end
+        local wallpen = function(instance)
+            return true
+        end
+        local visible = function(instance)
+            return true
+        end
+        local loops = table.create(2);
+        local function setvis(value)
+            for i,v in pairs(e.Core) do
+                v.Visible = value
+            end
+            for i,v in pairs(e.Shadow) do
+                v.Visible = value
+            end
+            for i,v in pairs(e.Text) do
+                v.Visible = value
+            end
+        end
+        local target = nil
+        local target_name = nil
+        local player
+        local part
+        local pos, onscreen
+        local players = {};
+        local sorted = {};
+        local apos, aonscreen
+        local bpos, bonscreen
+        task_spawn(function()
+            local a = function()
+                local Target, Original = nil, nil
+                players = {};
+                sorted = {};
+                for i,v in pairs(game:GetService('Players'):GetChildren()) do
+                    players[v] = v
+                end
+                for i,v in pairs(players) do
+                    if v ~= dwLocalPlayer then
+                        player = getcharacter(v)
+                        if player ~= nil and player.PrimaryPart ~= nil and player:FindFirstChild('Head') ~= nil then
+                            if config.Settings.Target == 'PrimaryPart' then
+                                part = player.PrimaryPart
+                            else
+                                part = player:FindFirstChild('Head')
+                            end
+                            pos, onscreen = dwCamera:WorldToViewportPoint(part.Position)
+                            if (Vector2_new(dwCamera.ViewportSize.X/2,dwCamera.ViewportSize.Y/2) - Vector2_new(pos.X,pos.Y)).Magnitude < (config.Settings.Dynamic and (config.Settings.Distance*((80 - dwCamera.FieldOfView)/100 + 1)) or config.Settings.Distance) and onscreen and isteam(v, dwLocalPlayer) and isfriend(v, dwLocalPlayer) and visible(player) and wallpen(player) and GetDistance(Vector2_new(part.Position.X, part.Position.Y)) > config.Settings.Min and GetDistance(Vector2_new(part.Position.X, part.Position.Y)) < config.Settings.Max then
+                                table.insert(sorted, player)
+                                table.sort(sorted, function(a, b)
+                                    apos, aonscreen = dwCamera:WorldToViewportPoint(a.PrimaryPart.Position)
+                                    bpos, bonscreen = dwCamera:WorldToViewportPoint(b.PrimaryPart.Position)
+                                    return (Vector2_new(dwCamera.ViewportSize.X/2,dwCamera.ViewportSize.Y/2) - Vector2_new(apos.X,apos.Y)).Magnitude < (Vector2_new(dwCamera.ViewportSize.X/2,dwCamera.ViewportSize.Y/2) - Vector2_new(bpos.X,bpos.Y)).Magnitude
+                                end)
+                                Target = sorted[1];
+                                Original = sorted[1];
+                            else
+                                table.remove(sorted, table.find(sorted, player))
+                            end
+                        end
+                    end
+                end
+                return Target, Original;
+            end
+            loops['closestplayer'] = aimbot:AddConnection(dwRunservice.RenderStepped, function()
+                if config.Toggles.Enabled and config.Lock == false then
+                    target, target_name = a()
+                    config.Target = target
+                end
+            end)
+        end)
+        task_spawn(function()
+            loops['elements'] = aimbot:AddConnection(dwRunservice.RenderStepped, function()
+                if config.Toggles.Enabled then
+                    e.Core.Circle.Visible = config.Toggles.Showfov
+                    e.Core.Circle.NumSides = config.Settings.Sides
+                    e.Core.Circle.Color = config.Settings.Color
+                    e.Core.Circle.Radius = (config.Settings.Dynamic and (config.Settings.Distance*((80 - dwCamera.FieldOfView)/100 + 1)) or config.Settings.Distance)
+                    e.Core.Circle.Position = Vector2_new(dwCamera.ViewportSize.X/2,dwCamera.ViewportSize.Y/2)
+                    e.Shadow.Circle.Visible = config.Toggles.Showfov and config.Settings.Shadow
+                    e.Shadow.Circle.NumSides = config.Settings.Sides
+                    e.Shadow.Circle.Radius = (config.Settings.Dynamic and (config.Settings.Distance*((80 - dwCamera.FieldOfView)/100 + 1)) or config.Settings.Distance)
+                    e.Shadow.Circle.Position = Vector2_new(dwCamera.ViewportSize.X/2,dwCamera.ViewportSize.Y/2)
+                    e.Text.Info.Position = Vector2_new(dwCamera.ViewportSize.X/2,(dwCamera.ViewportSize.Y/2) + (config.Settings.Dynamic and (config.Settings.Distance*((80 - dwCamera.FieldOfView)/100 + 1)) or config.Settings.Distance))
+                    e.Text.Info.Color = config.Settings.Color
+                    if target ~= nil and target.PrimaryPart ~= nil then
+                        e.Text.Info.Visible = config.Settings.Info and config.Toggles.Showfov
+                        e.Text.Info.Text = ''..target_name.Name..' [ '..tostring(math_ceil(GetDistance(Vector2_new(target.PrimaryPart.Position.X, target.PrimaryPart.Position.Y))))..' ]'
+                        if config.Settings.Reactive then
+                            e.Core.Circle.Transparency = pulsing_lerp(0.5, 1, 0.001)
+                            e.Shadow.Circle.Transparency = pulsing_lerp(0.5, 1, 0.001)
+                            e.Text.Info.Transparency = pulsing_lerp(0.5, 1, 0.001)
+                        else
+                            e.Text.Info.Transparency = 1
+                            e.Core.Circle.Transparency = 1
+                            e.Shadow.Circle.Transparency = 1
+                        end
+                    else
+                        e.Text.Info.Transparency = 1
+                        e.Core.Circle.Transparency = 1
+                        e.Shadow.Circle.Transparency = 1
+                        e.Text.Info.Visible = false
+                        e.Text.Info.Text = 'Invalid Player'
+                    end
+                else
+                    setvis(false)
+                end
+            end)
+        end)
+        task_spawn(function()
+            local poss, ons
+            loops['mouse'] = aimbot:AddConnection(dwRunservice.RenderStepped, function()
+                if config.Toggles.Enabled and target ~= nil and ((target.PrimaryPart and config.Settings.Target == "PrimaryPart") or target:FindFirstChild(config.Settings.Target)) ~= nil then
+                    if config.Settings.Target == 'PrimaryPart' then
+                        poss, ons = dwCamera:WorldToViewportPoint(target.PrimaryPart.Position)
+                    else
+                        poss, ons = dwCamera:WorldToViewportPoint(target:FindFirstChild(config.Settings.Target).Position)
+                    end
+                    if config.Lock and ons then
+                        mousemoveabs((poss.X) / config.Settings.Smoothness.X, (poss.Y) / config.Settings.Smoothness.Y)
+                    end
+                end
+            end)
+        end)
+    elseif string.lower(type) == 'other' then
+        local e = {
+            ['Shadow'] = {Circle = Drawing.new('Circle')},
+            ['Core'] = {Circle = Drawing.new('Circle')},
+            ['Text'] = {Info = Drawing.new('Text')},
+        };
+        for i,v in pairs(e.Core) do
+            v.Visible = false
+            v.Thickness = 1
+        end
+        for i,v in pairs(e.Shadow) do
+            v.Visible = false
+            v.Filled = false
+            v.Thickness = 2.5
+            v.Color = Color3_fromRGB(0, 0, 0)
+        end
+        for i,v in pairs(e.Text) do
+            v.Visible = false
+            v.Outline = true
+            v.Center = true
+        end
+        local wallpen = function(instance)
+            return true
+        end
+        local visible = function(instance)
+            return true
+        end
+        local loops = table.create(2);
+        local function setvis(value)
+            for i,v in pairs(e.Core) do
+                v.Visible = value
+            end
+            for i,v in pairs(e.Shadow) do
+                v.Visible = value
+            end
+            for i,v in pairs(e.Text) do
+                v.Visible = value
+            end
+        end
+        local target = nil
+        local target_name = nil
+        local player
+        local part
+        local pos, onscreen
+        local players = {};
+        local sorted = {};
+        local apos, aonscreen
+        local bpos, bonscreen
+        task_spawn(function()
+            local a = function()
+                local Target, Original = nil, nil
+                players = {};
+                sorted = {};
+                for i,v in pairs(config.Models) do
+                    players[v] = v
+                end
+                for i,v in pairs(players) do
+                    if v ~= nil and v ~= dwLocalPlayer then
+                        player = v
+                        if player ~= nil and player.PrimaryPart ~= nil and player:FindFirstChild('Head') ~= nil then
+                            if config.Settings.Target == 'PrimaryPart' then
+                                part = player.PrimaryPart
+                            else
+                                part = player:FindFirstChild('Head')
+                            end
+                            pos, onscreen = dwCamera:WorldToViewportPoint(part.Position)
+                            if (Vector2_new(dwCamera.ViewportSize.X/2,dwCamera.ViewportSize.Y/2) - Vector2_new(pos.X,pos.Y)).Magnitude < (config.Settings.Dynamic and (config.Settings.Distance*((80 - dwCamera.FieldOfView)/100 + 1)) or config.Settings.Distance) and onscreen and visible(player) and wallpen(player) and GetDistance(Vector2_new(part.Position.X, part.Position.Y)) > config.Settings.Min and GetDistance(Vector2_new(part.Position.X, part.Position.Y)) < config.Settings.Max then
+                                table.insert(sorted, player)
+                                table.sort(sorted, function(a, b)
+                                    apos, aonscreen = dwCamera:WorldToViewportPoint(a.PrimaryPart.Position)
+                                    bpos, bonscreen = dwCamera:WorldToViewportPoint(b.PrimaryPart.Position)
+                                    return (Vector2_new(dwCamera.ViewportSize.X/2,dwCamera.ViewportSize.Y/2) - Vector2_new(apos.X,apos.Y)).Magnitude < (Vector2_new(dwCamera.ViewportSize.X/2,dwCamera.ViewportSize.Y/2) - Vector2_new(bpos.X,bpos.Y)).Magnitude
+                                end)
+                                Target = sorted[1];
+                                Original = sorted[1];
+                            else
+                                table.remove(sorted, table.find(sorted, player))
+                            end
+                        end
+                    end
+                end
+                return Target, Original;
+            end
+            loops['closestplayer'] = aimbot:AddConnection(dwRunservice.RenderStepped, function()
+                if config.Toggles.Enabled and config.Lock == false then
+                    target, target_name = a()
+                    config.Target = target
+                end
+            end)
+        end)
+        task_spawn(function()
+            loops['elements'] = aimbot:AddConnection(dwRunservice.RenderStepped, function()
+                if config.Toggles.Enabled then
+                    e.Core.Circle.Visible = config.Toggles.Showfov
+                    e.Core.Circle.NumSides = config.Settings.Sides
+                    e.Core.Circle.Color = config.Settings.Color
+                    e.Core.Circle.Radius = (config.Settings.Dynamic and (config.Settings.Distance*((80 - dwCamera.FieldOfView)/100 + 1)) or config.Settings.Distance)
+                    e.Core.Circle.Position = Vector2_new(dwCamera.ViewportSize.X/2,dwCamera.ViewportSize.Y/2)
+                    e.Shadow.Circle.Visible = config.Toggles.Showfov and config.Settings.Shadow
+                    e.Shadow.Circle.NumSides = config.Settings.Sides
+                    e.Shadow.Circle.Radius = (config.Settings.Dynamic and (config.Settings.Distance*((80 - dwCamera.FieldOfView)/100 + 1)) or config.Settings.Distance)
+                    e.Shadow.Circle.Position = Vector2_new(dwCamera.ViewportSize.X/2,dwCamera.ViewportSize.Y/2)
+                    e.Text.Info.Position = Vector2_new(dwCamera.ViewportSize.X/2,(dwCamera.ViewportSize.Y/2) + (config.Settings.Dynamic and (config.Settings.Distance*((80 - dwCamera.FieldOfView)/100 + 1)) or config.Settings.Distance))
+                    e.Text.Info.Color = config.Settings.Color
+                    if target ~= nil and target.PrimaryPart ~= nil then
+                        e.Text.Info.Visible = config.Settings.Info and config.Toggles.Showfov
+                        e.Text.Info.Text = ''..target_name.Name..' [ '..tostring(math_ceil(GetDistance(Vector2_new(target.PrimaryPart.Position.X, target.PrimaryPart.Position.Y))))..' ]'
+                        if config.Settings.Reactive then
+                            e.Core.Circle.Transparency = pulsing_lerp(0.5, 1, 0.001)
+                            e.Shadow.Circle.Transparency = pulsing_lerp(0.5, 1, 0.001)
+                            e.Text.Info.Transparency = pulsing_lerp(0.5, 1, 0.001)
+                        else
+                            e.Text.Info.Transparency = 1
+                            e.Core.Circle.Transparency = 1
+                            e.Shadow.Circle.Transparency = 1
+                        end
+                    else
+                        e.Text.Info.Transparency = 1
+                        e.Core.Circle.Transparency = 1
+                        e.Shadow.Circle.Transparency = 1
+                        e.Text.Info.Visible = false
+                        e.Text.Info.Text = 'Invalid Model'
+                    end
+                else
+                    setvis(false)
+                end
+            end)
+        end)
+        task_spawn(function()
+            local poss, ons
+            loops['mouse'] = aimbot:AddConnection(dwRunservice.RenderStepped, function()
+                if config.Toggles.Enabled and target ~= nil and ((target.PrimaryPart and config.Settings.Target == "PrimaryPart") or target:FindFirstChild(config.Settings.Target)) ~= nil then
+                    if config.Settings.Target == 'PrimaryPart' then
+                        poss, ons = dwCamera:WorldToViewportPoint(target.PrimaryPart.Position)
+                    else
+                        poss, ons = dwCamera:WorldToViewportPoint(target:FindFirstChild(config.Settings.Target).Position)
+                    end
+                    if config.Lock and ons then
+                        mousemoveabs((poss.X) / config.Settings.Smoothness.X, (poss.Y) / config.Settings.Smoothness.Y)
+                    end
+                end
+            end)
+        end)
+    end
+end
+return aimbot;

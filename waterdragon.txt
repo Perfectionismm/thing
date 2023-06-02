@@ -58,6 +58,22 @@ local getcharacter = function(player)
 end
 aimbot.Start = function(config, type)
     config = config
+    local wallpen = function(instance)
+        return true
+    end
+    local a
+    local visible = function(instance)
+        if config.Conditions.VisCheck then
+            if config.Settings.Target == 'PrimaryPart' then
+                a = dwCamera:GetPartsObscuringTarget({dwCamera.CFrame.Position, instance.PrimaryPart.Position}, {instance, config.Ignore})
+            else
+                a = dwCamera:GetPartsObscuringTarget({dwCamera.CFrame.Position, instance:FindFirstChild(config.Settings.Target).Position}, {instance, config.Ignore})
+            end
+            return #a == 0
+        else
+            return true
+        end
+    end
     if string.lower(type) == 'players' then
         local e = {
             ['Shadow'] = {Circle = Drawing.new('Circle')},
@@ -94,12 +110,6 @@ aimbot.Start = function(config, type)
             else
                 return true
             end
-        end
-        local wallpen = function(instance)
-            return true
-        end
-        local visible = function(instance)
-            return true
         end
         local loops = table.create(2);
         local function setvis(value)
@@ -237,12 +247,6 @@ aimbot.Start = function(config, type)
             v.Visible = false
             v.Outline = true
             v.Center = true
-        end
-        local wallpen = function(instance)
-            return true
-        end
-        local visible = function(instance)
-            return true
         end
         local loops = table.create(2);
         local function setvis(value)

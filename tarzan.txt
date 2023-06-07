@@ -1,9 +1,10 @@
-local esp = {cache = {connections = {}}};
+local esp = {cache = {connections = {}, drawings = {}}};
 local drawing = loadstring(game:HttpGet('https://raw.githubusercontent.com/JayGitCuh/useful-stuff/main/vozoidextension.lua'))()
 local drawing_new = function(class, properties)
     if class == "3dCircle" then
         properties = properties or {}
         local t = drawing:MakeCircle()
+        table.insert(esp.cache.drawings, t)
         for property, value in next, properties do
             t[property] = value
         end
@@ -11,6 +12,7 @@ local drawing_new = function(class, properties)
     else
         properties = properties or {}
         local object = Drawing.new(class)
+        table.insert(esp.cache.drawings, object)
         for property, value in next, properties do
             object[property] = value
         end
@@ -37,9 +39,13 @@ local Color3_fromRGB = Color3.fromRGB
 local UDim2_new = UDim2.new
 local TweenInfo_new = TweenInfo.new
 --Cool functions
+local character = nil
 local getcharacter = function(player)
     if game.PlaceId == 13253735473 then
         return player
+    elseif game.PlaceId == 3233893879 then
+        character = getupvalue(require(game:GetService("ReplicatedStorage").TS).Characters.GetCharacter, 1)[player]
+        return character, character:FindFirstChild("Body").Abdomen, character:FindFirstChild("Health").Value, character:FindFirstChild("MaxHealth").Value
     else
         if player.ClassName == "Model" then
             return player
@@ -48,25 +54,35 @@ local getcharacter = function(player)
         end
     end
 end
+local getteam = function(Player:Player)
+    if game.PlaceId == 3233893879 then
+        for i,v in pairs(game:GetService("Teams"):GetDescendants()) do
+            if v.Name == Player.Name then
+                return v.Parent.Parent.Name
+            end
+        end
+    end
+end
 local isfriendly = function(Player:Player, Self:Player)
     if game.PlaceId == 13253735473 then
         return false
+    elseif game.PlaceId == 3233893879 then
+        if getteam(Player) == getteam(Self) and Player ~= nil and Self ~= nil then
+            return true
+        end
     else
         if Player ~= nil and Self ~= nil and Player.TeamColor == Self.TeamColor then
             return true
         end
     end
 end
-local getrank = function(player)
-    if game.PlaceId == 4310463616 then
-        return player.Character:FindFirstChild('Properties').Class.Value
-    else
-        return 'This place is not supported'
-    end
-end
 local getweapon = function(player)
     if game.PlaceId == 2555870920 then
         return player.Weapons.Gun.Value
+    elseif game.PlaceId == 3233893879 then
+        if player ~= nil and player.Backpack.Equipped ~= nil then
+            return player.Backpack.Equipped.Value
+        end
     else
         return 'This place is not supported'
     end
@@ -137,6 +153,17 @@ local GetBoundingBox = function(Character)
 end
 esp.Render = function(instance: Instance, type: string, config: table)
     config = config
+    local getrank = function(player)
+        if game.PlaceId == 4310463616 then
+            return player.Character:FindFirstChild('Properties').Class.Value
+        elseif game.PlaceId == 3233893879 then
+            return '[ '..tostring(game:GetService("ReplicatedStorage").PlayerData[instance.Name].Rank.Prestige.Value)..' ] '..tostring(game:GetService("ReplicatedStorage").PlayerData[instance.Name].Rank.Level.Value)
+        elseif game.PlaceId == 13253735473 then
+            return config.Trident[1](player)
+        else
+            return 'This place is not supported'
+        end
+    end
     if string.lower(type) == "player" then
         local player
         local p = {
@@ -242,6 +269,11 @@ esp.Render = function(instance: Instance, type: string, config: table)
                         if player ~= nil then
                             p.health = 100
                             p.maxhealth = 100
+                        end
+                    elseif game.PlaceId == 3233893879 then
+                        if player ~= nil and player.Health ~= nil and player.Health.MaxHealth ~= nil then
+                            p.health = player.Health.Value
+                            p.maxhealth = player.Health.MaxHealth.Value
                         end
                     else
                         if player ~= nil and player:FindFirstChild('Humanoid') ~= nil then
@@ -890,6 +922,14 @@ esp.Render = function(instance: Instance, type: string, config: table)
         print("crosshair has not been added yet please wait")
     else
         print("wrong args")
+    end
+end
+function esp:Unload()
+    for i,v in pairs(esp.cache.drawings) do
+        v:Remove()
+    end
+    for i,v in pairs(esp.cache.connections) do
+        v:Disconnect()
     end
 end
 return esp;

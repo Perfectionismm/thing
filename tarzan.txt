@@ -67,7 +67,7 @@ local isfriendly = function(Player:Player, Self:Player)
     if game.PlaceId == 13253735473 then
         return false
     elseif game.PlaceId == 3233893879 then
-        if getteam(Player) == getteam(Self) and Player ~= nil and Self ~= nil then
+        if getteam(Self) ~= 'FFA' and getteam(Player) == getteam(Self) and Player ~= nil and Self ~= nil then
             return true
         end
     else

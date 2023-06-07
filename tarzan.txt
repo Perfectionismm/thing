@@ -159,7 +159,11 @@ esp.Render = function(instance: Instance, type: string, config: table)
         elseif game.PlaceId == 3233893879 then
             return '[ '..tostring(game:GetService("ReplicatedStorage").PlayerData[instance.Name].Rank.Prestige.Value)..' ] '..tostring(game:GetService("ReplicatedStorage").PlayerData[instance.Name].Rank.Level.Value)
         elseif game.PlaceId == 13253735473 then
-            return config.Trident[1](player)
+            if config.Trident[1](player) then
+                return 'Sleeping'
+            else
+                return 'Awake'
+            end
         else
             return 'This place is not supported'
         end

@@ -80,6 +80,7 @@ local getweapon = function(player)
     if game.PlaceId == 2555870920 then
         return player.Weapons.Gun.Value
     elseif game.PlaceId == 13253735473 then
+        print('worky')
         if player.Armor:FindFirstChildOfClass("Folder") then
             return true
         end

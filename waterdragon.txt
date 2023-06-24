@@ -222,7 +222,7 @@ aimbot.Start = function(config, type)
                         poss, ons = dwCamera:WorldToViewportPoint(target:FindFirstChild(config.Settings.Target).Position)
                     end
                     if config.Lock and ons then
-                        mousemoveabs((poss.X) / config.Settings.Smoothness.X, (poss.Y) / config.Settings.Smoothness.Y)
+                        mousemoverel((poss.X) / config.Settings.Smoothness.X, (poss.Y) / config.Settings.Smoothness.Y)
                     end
                 end
             end)
@@ -359,7 +359,7 @@ aimbot.Start = function(config, type)
                         poss, ons = dwCamera:WorldToViewportPoint(target:FindFirstChild(config.Settings.Target).Position)
                     end
                     if config.Lock and ons then
-                        mousemoveabs((poss.X) / config.Settings.Smoothness.X, (poss.Y) / config.Settings.Smoothness.Y)
+                        --mousemoveabs((poss.X) / config.Settings.Smoothness.X, (poss.Y) / config.Settings.Smoothness.Y)
                     end
                 end
             end)
